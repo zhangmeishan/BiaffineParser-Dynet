@@ -7,212 +7,188 @@ from __future__ import print_function
 
 import numpy as np
 
-#***************************************************************
-#===============================================================
-def find_cycles(edges):
-  """"""
-  
-  vertices = np.arange(len(edges))
-  indices = np.zeros_like(vertices) - 1
-  lowlinks = np.zeros_like(vertices) - 1
-  stack = []
-  onstack = np.zeros_like(vertices, dtype=np.bool)
-  current_index = 0
-  cycles = []
-  
-  #-------------------------------------------------------------
-  def strong_connect(vertex, current_index):
+from collections import defaultdict
+
+
+# ***************************************************************
+class Tarjan:
+  """
+    Computes Tarjan's algorithm for finding strongly connected components (cycles) of a graph
+
+    Attributes:
+      edges: dictionary of edges such that edges[dep] = head
+      vertices: set of dependents
+      SCCs: list of sets of strongly connected components. Non-singleton sets are cycles.
+  """
+
+  # =============================================================
+  def __init__(self, prediction, tokens):
+    """
+      Inputs:
+        prediction: a predicted dependency tree where
+          prediction[dep_idx] = head_idx
+        tokens: the tokens we care about (i.e. exclude _GO, _EOS, and _PAD)
+    """
+
+    self._edges = defaultdict(set)
+    self._vertices = set((0,))
+    for dep, head in enumerate(prediction[tokens]):
+      self._vertices.add(dep + 1)
+      self._edges[head].add(dep + 1)
+    self._indices = {}
+    self._lowlinks = {}
+    self._onstack = defaultdict(lambda: False)
+    self._SCCs = []
+
+    index = 0
+    stack = []
+    for v in self.vertices:
+      if v not in self.indices:
+        self.strongconnect(v, index, stack)
+
+  # =============================================================
+  def strongconnect(self, v, index, stack):
     """"""
-    
-    indices[vertex] = current_index
-    lowlinks[vertex] = current_index
-    stack.append(vertex)
-    current_index += 1
-    onstack[vertex] = True
-    
-    for vertex_ in np.where(edges == vertex)[0]:
-      if indices[vertex_] == -1:
-        current_index = strong_connect(vertex_, current_index)
-        lowlinks[vertex] = min(lowlinks[vertex], lowlinks[vertex_])
-      elif onstack[vertex_]:
-        lowlinks[vertex] = min(lowlinks[vertex], indices[vertex_])
-    
-    if lowlinks[vertex] == indices[vertex]:
-      cycle = []
-      vertex_ = -1
-      while vertex_ != vertex:
-        vertex_ = stack.pop()
-        onstack[vertex_] = False
-        cycle.append(vertex_)
-      if len(cycle) > 1:
-        cycles.append(np.array(cycle))
-    return current_index
-  #-------------------------------------------------------------
-  
-  for vertex in vertices:
-    if indices[vertex] == -1:
-      current_index = strong_connect(vertex, current_index)
-  return cycles
 
-#===============================================================
-def find_roots(edges):
-  """"""
-  
-  return np.where(edges[1:] == 0)[0]+1
-  
-#***************************************************************
-def argmax(probs):
-  """"""
-  
-  edges = np.argmax(probs, axis=1)
-  return edges
-  
-#===============================================================
-def greedy(probs):
-  """"""
-  
-  edges = np.argmax(probs, axis=1)
-  cycles = True
-  while cycles:
-    cycles = find_cycles(edges)
-    for cycle_vertices in cycles:
-      # Get the best heads and their probabilities
-      cycle_edges = edges[cycle_vertices]
-      cycle_probs = probs[cycle_vertices, cycle_edges]
-      # Get the second-best edges and their probabilities
-      probs[cycle_vertices, cycle_edges] = 0
-      backoff_edges = np.argmax(probs[cycle_vertices], axis=1)
-      backoff_probs = probs[cycle_vertices, backoff_edges]
-      probs[cycle_vertices, cycle_edges] = cycle_probs
-      # Find the node in the cycle that the model is the least confident about and its probability
-      new_root_in_cycle = np.argmax(backoff_probs/cycle_probs)
-      new_cycle_root = cycle_vertices[new_root_in_cycle]
-      # Set the new root
-      probs[new_cycle_root, cycle_edges[new_root_in_cycle]] = 0
-      edges[new_cycle_root] = backoff_edges[new_root_in_cycle]
-  return edges
+    self._indices[v] = index
+    self._lowlinks[v] = index
+    index += 1
+    stack.append(v)
+    self._onstack[v] = True
+    for w in self.edges[v]:
+      if w not in self.indices:
+        self.strongconnect(w, index, stack)
+        self._lowlinks[v] = min(self._lowlinks[v], self._lowlinks[w])
+      elif self._onstack[w]:
+        self._lowlinks[v] = min(self._lowlinks[v], self._indices[w])
 
-#===============================================================
-def chu_liu_edmonds(probs):
-  """"""
-  
-  vertices = np.arange(len(probs))
-  edges = np.argmax(probs, axis=1)
-  cycles = find_cycles(edges)
-  if cycles:
-    print("found cycle, fixing...")
-    # (c)
-    cycle_vertices = cycles.pop()
-    # (nc)
-    non_cycle_vertices = np.delete(vertices, cycle_vertices)
-    #-----------------------------------------------------------
-    # (c)
-    cycle_edges = edges[cycle_vertices]
-    # get rid of cycle nodes
-    # (nc x nc)
-    non_cycle_probs = np.array(probs[non_cycle_vertices,:][:,non_cycle_vertices])
-    # add a node representing the cycle
-    # (nc+1 x nc+1)
-    non_cycle_probs = np.pad(non_cycle_probs, [[0,1], [0,1]], 'constant')
-    # probabilities of heads outside the cycle
-    # (c x nc) / (c x 1) = (c x nc)
-    backoff_cycle_probs = probs[cycle_vertices][:,non_cycle_vertices] / probs[cycle_vertices,cycle_edges][:,None]
-    # probability of a node inside the cycle depending on something outside the cycle
-    # max_0(c x nc) = (nc)
-    non_cycle_probs[-1,:-1] = np.max(backoff_cycle_probs, axis=0)
-    # probability of a node outside the cycle depending on something inside the cycle
-    # max_1(nc x c) = (nc)
-    non_cycle_probs[:-1,-1] = np.max(probs[non_cycle_vertices][:,cycle_vertices], axis=1)
-    #-----------------------------------------------------------
-    # (nc+1)
-    non_cycle_edges = chu_liu_edmonds(non_cycle_probs)
-    # This is the best source vertex into the cycle
-    non_cycle_root, non_cycle_edges = non_cycle_edges[-1], non_cycle_edges[:-1] # in (nc)
-    source_vertex = non_cycle_vertices[non_cycle_root] # in (v)
-    # This is the vertex in the cycle we want to change
-    cycle_root = np.argmax(backoff_cycle_probs[:,non_cycle_root]) # in (c)
-    target_vertex = cycle_vertices[cycle_root] # in (v)
-    edges[target_vertex] = source_vertex
-    # update edges with any other changes
-    mask = np.where(non_cycle_edges < len(non_cycle_probs)-1)
-    edges[non_cycle_vertices[mask]] = non_cycle_vertices[non_cycle_edges[mask]]
-    mask = np.where(non_cycle_edges == len(non_cycle_probs)-1)
-    edges[non_cycle_vertices[mask]] = cycle_vertices[np.argmax(probs[non_cycle_vertices][:,cycle_vertices], axis=1)]
-  return edges
+    if self._lowlinks[v] == self._indices[v]:
+      self._SCCs.append(set())
+      while stack[-1] != v:
+        w = stack.pop()
+        self._onstack[w] = False
+        self._SCCs[-1].add(w)
+      w = stack.pop()
+      self._onstack[w] = False
+      self._SCCs[-1].add(w)
+    return
 
-#===============================================================
-def nonprojective(probs):
-  """"""
-  
-  probs *= 1-np.eye(len(probs)).astype(np.float32)
-  probs[0] = 0
-  probs[0,0] = 1
-  probs /= np.sum(probs, axis=1, keepdims=True)
-  
-  #edges = chu_liu_edmonds(probs)
-  edges = greedy(probs)
-  roots = find_roots(edges)
-  best_edges = edges
-  best_score = -np.inf
+  # ======================
+  @property
+  def edges(self):
+    return self._edges
 
-  if len(roots) == 0:
-    raise Exception('zero root in decoding!')
+  @property
+  def vertices(self):
+    return self._vertices
 
-  if len(roots) > 1:
-    for root in roots:
-      probs_ = make_root(probs, root)
-      #edges_ = chu_liu_edmonds(probs_)
-      edges_ = greedy(probs_)
-      score = score_edges(probs_, edges_)
-      if score > best_score:
-        best_edges = edges_
-        best_score = score
-  return best_edges
+  @property
+  def indices(self):
+    return self._indices
 
-#===============================================================
-def make_root(probs, root):
-  """"""
-  
-  probs = np.array(probs)
-  probs[1:,0] = 0
-  probs[root,:] = 0
-  probs[root,0] = 1
-  probs /= np.sum(probs, axis=1, keepdims=True)
-  return probs
-
-#===============================================================
-def score_edges(probs, edges):
-  """"""
-  
-  return np.sum(np.log(probs[np.arange(1,len(probs)), edges[1:]]))
-
-def softmax2d(x, length1, length2):
-  y = np.zeros((length1, length2))
-  for i in range(length1):
-    for j in range(length2):
-      y[i,j] = x[i, j]
-  y -= np.max(y, axis=1, keepdims=True)
-  y = np.exp(y)
-  return y / np.sum(y, axis=1, keepdims=True)
+  @property
+  def SCCs(self):
+    return self._SCCs
 
 
-def mst(scores, length):
-  probs = softmax2d(scores, length, length)
-  probs *= 1 - np.eye(len(probs)).astype(np.float32)
-  probs[0] = 0
-  probs[0, 0] = 1
-  probs /= np.sum(probs, axis=1, keepdims=True)
-  edges = nonprojective(probs)
-  return edges, probs
+def arc_argmax(parse_probs, length, tokens_to_keep, ensure_tree = True):
+    """
+    adopted from Timothy Dozat https://github.com/tdozat/Parser/blob/master/lib/models/nn.py
+    """
+    if ensure_tree:
+        I = np.eye(len(tokens_to_keep))
+        # block loops and pad heads
+        parse_probs = parse_probs * tokens_to_keep * (1-I)
+        parse_preds = np.argmax(parse_probs, axis=1)
+        tokens = np.arange(1, length)
+        roots = np.where(parse_preds[tokens] == 0)[0]+1
+        # ensure at least one root
+        if len(roots) < 1:
+            # The current root probabilities
+            root_probs = parse_probs[tokens,0]
+            # The current head probabilities
+            old_head_probs = parse_probs[tokens, parse_preds[tokens]]
+            # Get new potential root probabilities
+            new_root_probs = root_probs / old_head_probs
+            # Select the most probable root
+            new_root = tokens[np.argmax(new_root_probs)]
+            # Make the change
+            parse_preds[new_root] = 0
+            # ensure at most one root
+        elif len(roots) > 1:
+            # The probabilities of the current heads
+            root_probs = parse_probs[roots,0]
+            # Set the probability of depending on the root zero
+            parse_probs[roots,0] = 0
+            # Get new potential heads and their probabilities
+            new_heads = np.argmax(parse_probs[roots][:,tokens], axis=1)+1
+            new_head_probs = parse_probs[roots, new_heads] / root_probs
+            # Select the most probable root
+            new_root = roots[np.argmin(new_head_probs)]
+            # Make the change
+            parse_preds[roots] = new_heads
+            parse_preds[new_root] = 0
+        # remove cycles
+        tarjan = Tarjan(parse_preds, tokens)
+        cycles = tarjan.SCCs
+        for SCC in tarjan.SCCs:
+            if len(SCC) > 1:
+                dependents = set()
+                to_visit = set(SCC)
+                while len(to_visit) > 0:
+                    node = to_visit.pop()
+                    if not node in dependents:
+                        dependents.add(node)
+                        to_visit.update(tarjan.edges[node])
+                # The indices of the nodes that participate in the cycle
+                cycle = np.array(list(SCC))
+                # The probabilities of the current heads
+                old_heads = parse_preds[cycle]
+                old_head_probs = parse_probs[cycle, old_heads]
+                # Set the probability of depending on a non-head to zero
+                non_heads = np.array(list(dependents))
+                parse_probs[np.repeat(cycle, len(non_heads)), np.repeat([non_heads], len(cycle), axis=0).flatten()] = 0
+                # Get new potential heads and their probabilities
+                new_heads = np.argmax(parse_probs[cycle][:,tokens], axis=1)+1
+                new_head_probs = parse_probs[cycle, new_heads] / old_head_probs
+                # Select the most probable change
+                change = np.argmax(new_head_probs)
+                changed_cycle = cycle[change]
+                old_head = old_heads[change]
+                new_head = new_heads[change]
+                # Make the change
+                parse_preds[changed_cycle] = new_head
+                tarjan.edges[new_head].add(changed_cycle)
+                tarjan.edges[old_head].remove(changed_cycle)
+        return parse_preds
+    else:
+        # block and pad heads
+        parse_probs = parse_probs * tokens_to_keep
+        parse_preds = np.argmax(parse_probs, axis=1)
+        return parse_preds
 
-
-#***************************************************************
-if __name__ == '__main__':
-  for iter in range(1000):
-      scores = np.random.randn(20,20)
-      edges, probs = mst(scores, 20, 20)
-      print('Iter:' + str(iter))
-      print(edges)
-      print(np.arange(len(edges)))
-      print(find_cycles(edges))
-      print(find_roots(edges))
+def rel_argmax(rel_probs, length, ROOT, ensure_tree = True):
+    """
+    adopted from Timothy Dozat https://github.com/tdozat/Parser/blob/master/lib/models/nn.py
+    """
+    if ensure_tree:
+        rel_probs[:,0] = 0
+        root = ROOT
+        tokens = np.arange(1, length)
+        rel_preds = np.argmax(rel_probs, axis=1)
+        roots = np.where(rel_preds[tokens] == root)[0]+1
+        if len(roots) < 1:
+            rel_preds[1+np.argmax(rel_probs[tokens,root])] = root
+        elif len(roots) > 1:
+            root_probs = rel_probs[roots, root]
+            rel_probs[roots, root] = 0
+            new_rel_preds = np.argmax(rel_probs[roots], axis=1)
+            new_rel_probs = rel_probs[roots, new_rel_preds] / root_probs
+            new_root = roots[np.argmin(new_rel_probs)]
+            rel_preds[roots] = new_rel_preds
+            rel_preds[new_root] = root
+        return rel_preds
+    else:
+        rel_probs[:,0] = 0
+        rel_preds = np.argmax(rel_probs, axis=1)
+        return rel_preds

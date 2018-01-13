@@ -78,7 +78,7 @@ def readDepTree(file, vocab=None):
                 if DepTree(sentence).isProj():
                     proj += 1
                 total += 1
-                lastId =  sentence[-1].id
+                lastId = sentence[-1].id
                 sentence.append(Dependency(lastId + 1, '<eos>', '<eos>', lastId, '<eos>'))
                 yield sentence
             if vocab is None:

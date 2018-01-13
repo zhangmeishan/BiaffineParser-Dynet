@@ -9,23 +9,6 @@ import numpy as np
 #import random
 import dynet as dy
 
-'''
-def pad_sequence(xs, length=None, padding=-1, dtype=np.float64):
-    lengths = [len(x) for x in xs]
-    if length is None:
-        length = max(lengths)
-    y = np.array([np.pad(x.astype(dtype), (0, length - l),
-                         mode="constant", constant_values=padding)
-                  for x, l in zip(xs, lengths)])
-    return torch.from_numpy(y)
-
-
-def _model_var(graph, x):
-    p = next(filter(lambda p: p.requires_grad, graph.parameters()))
-    if p.is_cuda:
-        x = x.cuda(p.get_device())
-    return torch.autograd.Variable(x)
-'''
 
 class BiaffineParser(object):
     def __init__(self, graph, root_id):
@@ -42,7 +25,6 @@ class BiaffineParser(object):
         self.seq_len = words.shape[0]
         self.mask = np.greater(words, self.root).astype(np.float32)
         self.num_tokens = int(np.sum(self.mask))
-
 
 
 
@@ -112,28 +94,21 @@ class BiaffineParser(object):
         rel_probs = np.transpose(np.reshape(dy.softmax(dy.transpose(flat_rel_logits)).npvalue(), \
                         (self.rel_size, self.seq_len, self.seq_len, self.batch_size), 'F'))
 
-        for arc_logit, label_logit, length in zip(arc_probs, rel_probs, lengths):
-            arcs, arc_probs = mst(arc_logit, length)
-            label_probs = softmax2d(label_logit[np.arange(length), arcs], length, label_logit.shape[2])
-            labels = np.argmax(label_probs, axis=1)
-
-            tokens = np.arange(1, length)
-            roots = np.where(labels[tokens] == ROOT)[0] + 1
-            if len(roots) < 1:
-                root_arc = np.where(arcs[tokens] == 0)[0] + 1
-                labels[root_arc] = ROOT
-            elif len(roots) > 1:
-                label_probs[roots, ROOT] = 0
-                new_labels = np.argmax(label_probs[roots], axis=1)
-                root_arc = np.where(arcs[tokens] == 0)[0] + 1
-                labels[roots] = new_labels
-                labels[root_arc] = ROOT
-            arcs[0] = -1
-            labels[0] = ROOT
-
-            for index in range(length):
-                pred_heads[index] = arcs[index]
-                pred_rels[index] = labels[index]
+        b = 0
+        for msk, arc_prob, rel_prob, length in zip(np.transpose(self.mask), arc_probs, rel_probs, lengths):
+            # parse sentences one by one
+            msk[0] = 1.
+            sent_len = int(np.sum(msk))
+            if sent_len != length:
+                print('Sentence length does not match, please check')
+            arc_pred = arc_argmax(arc_prob, sent_len, msk)            
+            rel_prob = rel_prob[np.arange(len(arc_pred)), arc_pred]
+            rel_pred = rel_argmax(rel_prob, sent_len, ROOT)
+            
+            for index in range(sent_len):
+                pred_heads[index, b] = arc_pred[index]
+                pred_rels[index, b] = rel_pred[index]
+            b += 1
 
         return pred_heads, pred_rels
 
@@ -198,7 +173,7 @@ def train(data, dev_data, test_data, graph, parser, vocab, config):
 def evaluate(data, parser, vocab, outputFile):
     start = time.time()
     output = open(outputFile, 'w', encoding='utf-8')
-    arc_total_test, arc_correct_test, label_total_test, label_correct_test = 0, 0, 0, 0
+    arc_total_test, arc_correct_test, rel_total_test, rel_correct_test = 0, 0, 0, 0
 
     for onebatch in data_iter(data, config.test_batch_size, False):
         words, extwords, tags, heads, rels, lengths = batch_data_variable(onebatch, vocab, False)
@@ -206,17 +181,17 @@ def evaluate(data, parser, vocab, outputFile):
         pred_heads, pred_rels = parser.parse(words, extwords, tags, lengths)
         for tree in batch_variable_depTree(words, tags, pred_heads, pred_rels, lengths, vocab):
             printDepTree(output, tree)
-            arc_total, arc_correct, label_total, label_correct = evalDepTree(tree, onebatch[count])
+            arc_total, arc_correct, rel_total, rel_correct = evalDepTree(tree, onebatch[count])
             arc_total_test += arc_total
             arc_correct_test += arc_correct
-            label_total_test += label_total
-            label_correct_test += label_correct
+            rel_total_test += rel_total
+            rel_correct_test += rel_correct
             count += 1
 
     output.close()
 
     uas = arc_correct_test * 1.0 / arc_total_test
-    las = label_correct_test * 1.0 / label_total_test
+    las = rel_correct_test * 1.0 / rel_total_test
 
     print('UAS: ' + str(uas))
     print('LAS: ' + str(las))
