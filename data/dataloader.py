@@ -19,7 +19,7 @@ def sentence2id(sentence, vocab, isTrain=False):
         if wordid > vocab.ROOT and isTrain:
             idfreq = vocab.wordid2freq(wordid)
             border = idfreq / (0.25 + idfreq)
-            if np.random.uniform(0.0, 1.0, 1)[0] >= border: wordid = 1
+            if np.random.uniform(0.0, 1.0, 1)[0] >= border: wordid = vocab.UNK
         extwordid = vocab.extword2id(dep.form)
         tagid = vocab.tag2id(dep.tag)
         head = dep.head
@@ -27,7 +27,6 @@ def sentence2id(sentence, vocab, isTrain=False):
         result.append([wordid, extwordid, tagid, head, relid])
 
     return result
-
 
 
 def batch_slice(data, batch_size, sort=True):
