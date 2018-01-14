@@ -40,6 +40,8 @@ class DepTree:
 
 
 def evalDepTree(gold, predict):
+    PUNCT_TAGS = ['``', "''", ':', ',', '.', 'PU']
+    ignore_tags = set(PUNCT_TAGS)
     start_g = 0
     if gold[0].id == 0: start_g = 1
     start_p = 0
@@ -53,7 +55,8 @@ def evalDepTree(gold, predict):
 
     arc_total, arc_correct, label_total, label_correct = 0, 0, 0, 0
     for idx in range(glength):
-        if gold[start_g + idx].form == '<eos>': continue
+        if gold[start_g + idx].pseudo: continue
+        if gold[start_g + idx].tag in ignore_tags: continue
         arc_total += 1
         label_total += 1
         if gold[start_g + idx].head == predict[start_p + idx].head:
