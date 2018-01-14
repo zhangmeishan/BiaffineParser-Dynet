@@ -113,10 +113,30 @@ def writeDepTree(filename, sentences):
                 if not entry.pseudo: file.write(str(entry) + '\n')
             file.write('\n')
 
-def printDepTree(output, sentence):
-    for entry in sentence:
-        if not entry.pseudo: output.write(str(entry) + '\n')
-    output.write('\n')
+def printDepTree(output, sentence, gold=None):
+    if gold== None:
+        for entry in sentence:
+            if not entry.pseudo: output.write(str(entry) + '\n')
+        output.write('\n')
+    else:
+        start_g = 0
+        if gold[0].id == 0: start_g = 1
+        start_p = 0
+        if sentence[0].id == 0: start_p = 1
+        glength = len(gold) - start_g
+        plength = len(sentence) - start_p
+
+        if glength != plength:
+            raise Exception('gold length does not match predict length.')
+
+        for idx in range(glength):
+            if gold[start_g + idx].pseudo: continue
+            values = [str(gold[start_g + idx].id), gold[start_g + idx].form, "", gold[start_g + idx].tag, \
+                      "", "", str(sentence[start_p + idx].head), sentence[start_p + idx].rel, "_", "_"]
+            output.write('\t'.join(values) + '\n')
+
+        output.write('\n')
+
 
 
 if __name__ == '__main__':

@@ -41,7 +41,7 @@ def batch_slice(data, batch_size, sort=True):
         yield sentences
 
 
-def data_iter(data, batch_size, shuffle=True):
+def data_iter(data, batch_size, shuffle=True, sort=True):
     """
     randomly permute data, then sort by source length, and partition into batches
     ensure that the length of  sentences in each batch
@@ -49,7 +49,7 @@ def data_iter(data, batch_size, shuffle=True):
 
     batched_data = []
     if shuffle: np.random.shuffle(data)
-    batched_data.extend(list(batch_slice(data, batch_size)))
+    batched_data.extend(list(batch_slice(data, batch_size, sort)))
 
     if shuffle: np.random.shuffle(batched_data)
     for batch in batched_data:
@@ -57,20 +57,19 @@ def data_iter(data, batch_size, shuffle=True):
 
 
 def batch_data_variable(batch, vocab, bTrain=False):
-    length = len(batch[0])
     batch_size = len(batch)
+    lengths = [len(batch[i]) for i in range(batch_size)]
+    length = np.max(lengths)
     words = np.zeros((length, batch_size), dtype=np.int32)
     extwords = np.zeros((length, batch_size), dtype=np.int32)
     tags = np.zeros((length, batch_size), dtype=np.int32)
 
     heads = np.zeros((length, batch_size), dtype=np.int32)
     rels = np.zeros((length, batch_size), dtype=np.int32)
-    lengths = []
 
     b = 0
     for sentence in sentences_numberize(batch, vocab, bTrain):
         index = 0
-        lengths.append(len(sentence))
         for dep in sentence:
             words[index, b] = dep[0]
             extwords[index, b] = dep[1]

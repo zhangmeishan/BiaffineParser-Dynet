@@ -175,12 +175,12 @@ def evaluate(data, parser, vocab, outputFile):
     output = open(outputFile, 'w', encoding='utf-8')
     arc_total_test, arc_correct_test, rel_total_test, rel_correct_test = 0, 0, 0, 0
 
-    for onebatch in data_iter(data, config.test_batch_size, False):
+    for onebatch in data_iter(data, config.test_batch_size, False, False):
         words, extwords, tags, heads, rels, lengths = batch_data_variable(onebatch, vocab, False)
         count = 0
         pred_heads, pred_rels = parser.parse(words, extwords, tags, lengths)
         for tree in batch_variable_depTree(words, tags, pred_heads, pred_rels, lengths, vocab):
-            printDepTree(output, tree)
+            printDepTree(output, tree, onebatch[count])
             arc_total, arc_correct, rel_total, rel_correct = evalDepTree(tree, onebatch[count])
             arc_total_test += arc_total
             arc_correct_test += arc_correct
