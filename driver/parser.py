@@ -66,7 +66,7 @@ class BiaffineParser(object):
         overall_accuracy = np.sum(correct) / self.num_tokens
 
 
-        return arc_accuracy, rel_accuracy, overall_accuracy, loss
+        return arc_accuracy * 100, rel_accuracy * 100, overall_accuracy * 100, loss
 
 
 
@@ -116,6 +116,8 @@ class BiaffineParser(object):
 def train(data, dev_data, test_data, graph, parser, vocab, config):
     pc = graph.parameter_collection
     trainer = dy.AdamTrainer(pc, config.learning_rate, config.beta_1, config.beta_2, config.epsilon)
+    trainer.set_clip_threshold(config.clip)
+
 
     global_step = 0
 
@@ -127,9 +129,7 @@ def train(data, dev_data, test_data, graph, parser, vocab, config):
 
     for iter in range(config.train_iters):
         start_time = time.time()
-        print('Iteration: ' + str(iter))
         batch_iter = 0
-
         for onebatch in data_iter(data, config.train_batch_size, True):
             # optimizer.zero_grad()
             words, extwords, tags, heads, rels, lengths = batch_data_variable(onebatch, vocab, True)
@@ -141,9 +141,9 @@ def train(data, dev_data, test_data, graph, parser, vocab, config):
             loss_value = loss.scalar_value()
             loss.backward()
 
-            print('batch: ' + str(batch_iter)  + ', arc: ' + str(arc_accuracy) + \
-                  ', rel: ' + str(rel_accuracy) + ', accuracy: ' + str(overall_accuracy) + \
-                  ', length: ' + str(sumLength)  + ', loss: ' + str(loss_value))
+            print("Step %d: LR: %.4f, Iter: %d, batch: %d, arc %.2f, rel %.2f, overall %.2f, length %d, loss %.2f" \
+                  %(global_step, trainer.learning_rate, iter, batch_iter, arc_accuracy, rel_accuracy, overall_accuracy, \
+                      sumLength, loss_value))
 
             if (batch_iter%config.update_every == 0):
                 update_parameters()
@@ -152,22 +152,24 @@ def train(data, dev_data, test_data, graph, parser, vocab, config):
             batch_iter += 1
 
             if batch_iter % config.validate_every == 0:
-                print('dev')
-                uas, las = evaluate(dev_data, parser, vocab, config.dev_file + '.' + str(iter) + '-' + str(batch_iter))
-                print('test')
-                evaluate(test_data, parser, vocab, config.test_file + '.' + str(iter) + '-' + str(batch_iter))
-                if uas > best_UAS:
-                    print('Exceed best uas: history=' + str(best_UAS) + ', current=' + str(uas))
-                    best_UAS = uas
+                dev_uas, dev_las = evaluate(dev_data, parser, vocab, \
+                                config.dev_file + '.' + str(iter) + '-' + str(batch_iter))
+                print("Dev: uas = %.2f, las = %.2f" % (dev_uas, dev_las))
+                test_uas, test_las = evaluate(test_data, parser, vocab, \
+                                config.test_file + '.' + str(iter) + '-' + str(batch_iter))
+                print("Test: uas = %.2f, las = %.2f" % (test_uas, test_las))
+                if dev_uas > best_UAS:
+                    print("Exceed best uas: history = %.2f, current = %.2f" %(best_UAS, dev_uas))
+                    best_UAS = dev_uas
                     #if iter > config.save_after: parser.save(config.save_model_path)
 
-        print('dev')
-        uas, las = evaluate(dev_data, parser, vocab, config.dev_file + '.' + str(iter) + '-' + str(batch_iter))
-        print('test')
-        evaluate(test_data, parser, vocab, config.test_file + '.' + str(iter) + '-' + str(batch_iter))
-        if uas > best_UAS:
-            print('Exceed best uas: history=' + str(best_UAS) + ', current=' + str(uas))
-            best_UAS = uas
+        dev_uas, dev_las = evaluate(dev_data, parser, vocab, config.dev_file + '.' + str(iter) + '-' + str(batch_iter))
+        print("Dev: uas = %.2f, las = %.2f" % (dev_uas, dev_las))
+        test_uas, test_las = evaluate(test_data, parser, vocab, config.test_file + '.' + str(iter) + '-' + str(batch_iter))
+        print("Test: uas = %.2f, las = %.2f" % (test_uas, test_las))
+        if dev_uas > best_UAS:
+            print("Exceed best uas: history = %.2f, current = %.2f" % (best_UAS, dev_uas))
+            best_UAS = dev_uas
         print('iter: ', iter, ' train: ', time.time() - start_time)
 
 def evaluate(data, parser, vocab, outputFile):
@@ -190,14 +192,11 @@ def evaluate(data, parser, vocab, outputFile):
 
     output.close()
 
-    uas = arc_correct_test * 1.0 / arc_total_test
-    las = rel_correct_test * 1.0 / rel_total_test
-
-    print('UAS: ' + str(uas))
-    print('LAS: ' + str(las))
+    uas = arc_correct_test * 100.0 / arc_total_test
+    las = rel_correct_test * 100.0 / rel_total_test
 
     end = time.time()
-    print('time: ', end - start)
+    print('sentence num:' + str(len(data)) + ', parse time: ', end - start)
 
     return uas, las
 

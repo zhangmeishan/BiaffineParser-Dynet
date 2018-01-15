@@ -113,6 +113,9 @@ class Configurable(object):
 	@property
 	def epsilon(self):
 		return self._config.getfloat('Optimizer','epsilon')
+	@property
+	def clip(self):
+		return self._config.getfloat('Optimizer','clip')
 
 	@property
 	def num_buckets_train(self):
