@@ -10,8 +10,8 @@ class Vocab(object):
         self._id2word = ['<pad>', relroot.lower(), '<unk>']
         self._wordid2freq = [10000, 10000, 10000]
         self._id2extword = ['<pad>']
-        self._id2tag = ['<pad>', relroot, '<unk>']
-        self._id2rel = ['<pad>', relroot, '<unk>']
+        self._id2tag = ['<pad>', relroot]
+        self._id2rel = ['<pad>', relroot]
         for word, count in word_counter.most_common():
             self._id2word.append(word)
             self._wordid2freq.append(count)
@@ -71,8 +71,8 @@ class Vocab(object):
 
     def tag2id(self, xs):
         if isinstance(xs, list):
-            return [self._tag2id.get(x, self.UNK) for x in xs]
-        return self._tag2id.get(xs, self.UNK)
+            return [self._tag2id.get(x) for x in xs]
+        return self._tag2id.get(xs)
 
     def id2tag(self, xs):
         if isinstance(xs, list):

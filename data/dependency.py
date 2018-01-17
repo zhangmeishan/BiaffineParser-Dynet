@@ -9,7 +9,7 @@ class Dependency:
         self.rel = rel
 
     def __str__(self):
-        values = [str(self.id), self.form, "", self.tag, "", "", str(self.head), self.rel, "_", "_"]
+        values = [str(self.id), self.form, "_", self.tag, "_", "_", str(self.head), self.rel, "_", "_"]
         return '\t'.join(values)
 
     @property
@@ -81,8 +81,8 @@ def readDepTree(file, vocab=None):
                 if DepTree(sentence).isProj():
                     proj += 1
                 total += 1
-                lastId = sentence[-1].id
-                sentence.append(Dependency(lastId + 1, '<eos>', '<eos>', lastId, '<eos>'))
+                #lastId = sentence[-1].id
+                #sentence.append(Dependency(lastId + 1, '<eos>', '<eos>', lastId, '<eos>'))
                 yield sentence
             if vocab is None:
                 sentence = []
@@ -101,8 +101,8 @@ def readDepTree(file, vocab=None):
         if DepTree(sentence).isProj():
             proj += 1
         total += 1
-        lastId = sentence[-1].id
-        sentence.append(Dependency(lastId + 1, '<eos>', '<eos>', lastId, '<eos>'))
+        #lastId = sentence[-1].id
+        #sentence.append(Dependency(lastId + 1, '<eos>', '<eos>', lastId, '<eos>'))
         yield sentence
 
     print("Total num: ", total)
@@ -134,8 +134,8 @@ def printDepTree(output, sentence, gold=None):
 
         for idx in range(glength):
             if gold[start_g + idx].pseudo: continue
-            values = [str(gold[start_g + idx].id), gold[start_g + idx].form, "", gold[start_g + idx].tag, \
-                      "", "", str(sentence[start_p + idx].head), sentence[start_p + idx].rel, "_", "_"]
+            values = [str(gold[start_g + idx].id), gold[start_g + idx].form, "_", gold[start_g + idx].tag, \
+                      "_", "_", str(sentence[start_p + idx].head), sentence[start_p + idx].rel, "_", "_"]
             output.write('\t'.join(values) + '\n')
 
         output.write('\n')

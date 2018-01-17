@@ -48,7 +48,7 @@ class BiaffineParser(object):
         flat_rel_logits = dy.reshape(self.rel_logits,  \
                                      (self.seq_len, self.rel_size), self.seq_len * self.batch_size)
 
-        flat_arc_preds = dynet_flatten_numpy(arc_preds)
+        #flat_arc_preds = dynet_flatten_numpy(arc_preds)
         # (rel_size) x (#dep x batch_size)
         partial_rel_logits = dy.pick_batch(flat_rel_logits, targets_1D)
 
@@ -131,7 +131,7 @@ def train(data, dev_data, test_data, graph, parser, vocab, config):
     for iter in range(config.train_iters):
         start_time = time.time()
         batch_iter = 0
-        for onebatch in data_iter(data, config.train_batch_size, True):
+        for onebatch in data_iter(data, config.train_batch_size, True, True):
             # optimizer.zero_grad()
             words, extwords, tags, heads, rels, lengths = batch_data_variable(onebatch, vocab, True)
             sumLength = sum(lengths)
