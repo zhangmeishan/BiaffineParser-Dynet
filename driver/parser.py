@@ -50,7 +50,7 @@ class BiaffineParser(object):
 
         flat_arc_preds = dynet_flatten_numpy(arc_preds)
         # (rel_size) x (#dep x batch_size)
-        partial_rel_logits = dy.pick_batch(flat_rel_logits, flat_arc_preds)
+        partial_rel_logits = dy.pick_batch(flat_rel_logits, targets_1D)
 
         # seq_len x batch_size
         rel_preds = partial_rel_logits.npvalue().argmax(0)
