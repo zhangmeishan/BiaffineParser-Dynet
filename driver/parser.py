@@ -48,15 +48,16 @@ class BiaffineParser(object):
         flat_rel_logits = dy.reshape(self.rel_logits,  \
                                      (self.seq_len, self.rel_size), self.seq_len * self.batch_size)
 
+        flat_arc_preds = dynet_flatten_numpy(arc_preds)
         # (rel_size) x (#dep x batch_size)
-        partial_rel_logits = dy.pick_batch(flat_rel_logits, targets_1D)
+        partial_rel_logits = dy.pick_batch(flat_rel_logits, flat_arc_preds)
 
         # seq_len x batch_size
         rel_preds = partial_rel_logits.npvalue().argmax(0)
-        targets_1D = dynet_flatten_numpy(true_labels)
-        rel_correct = np.equal(rel_preds, targets_1D).astype(np.float32) * mask_1D
+        targets_rel1D = dynet_flatten_numpy(true_labels)
+        rel_correct = np.equal(rel_preds, targets_rel1D).astype(np.float32) * mask_1D
         rel_accuracy = np.sum(rel_correct) / self.num_tokens
-        losses = dy.pickneglogsoftmax_batch(partial_rel_logits, targets_1D)
+        losses = dy.pickneglogsoftmax_batch(partial_rel_logits, targets_rel1D)
 
         rel_loss = dy.sum_batches(losses * mask_1D_tensor) / self.num_tokens
 
