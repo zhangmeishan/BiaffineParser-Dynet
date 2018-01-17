@@ -12,10 +12,11 @@ class ParserGraph(object):
     def __init__(self, vocab, config, pretrained_embedding):
         pc = dy.ParameterCollection()
         self.config = config
-        word_init = np.random.randn(vocab.vocab_size, config.word_dims).astype(np.float32)
+        word_init = np.zeros((vocab.vocab_size, config.word_dims), dtype=np.float32)
         self.word_embs = pc.lookup_parameters_from_numpy(word_init)
         self.pret_word_embs = pc.lookup_parameters_from_numpy(pretrained_embedding)
-        tag_init = np.random.randn(vocab.tag_size, config.tag_dims).astype(np.float32)
+        tag_init = 2 * np.random.rand(vocab.tag_size, config.tag_dims).astype(np.float32)  - 1.0;
+        tag_init = tag_init / np.sqrt(config.tag_dims)
         self.tag_embs = pc.lookup_parameters_from_numpy(tag_init)
         self.rel_size = vocab.rel_size
 
