@@ -16,10 +16,10 @@ def sentence2id(sentence, vocab, isTrain=False):
     result = []
     for dep in sentence:
         wordid = vocab.word2id(dep.form)
-        if wordid > vocab.ROOT and isTrain:
-            idfreq = vocab.wordid2freq(wordid)
-            border = idfreq / (0.25 + idfreq)
-            if np.random.uniform(0.0, 1.0, 1)[0] >= border: wordid = vocab.UNK
+        #if wordid > vocab.ROOT and isTrain:
+        #    idfreq = vocab.wordid2freq(wordid)
+        #    border = idfreq / (0.25 + idfreq)
+        #    if np.random.uniform(0.0, 1.0, 1)[0] >= border: wordid = vocab.UNK
         extwordid = vocab.extword2id(dep.form)
         tagid = vocab.tag2id(dep.tag)
         head = dep.head

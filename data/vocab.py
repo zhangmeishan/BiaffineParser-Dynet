@@ -5,7 +5,7 @@ from data.pretrained_embedding import *
 
 class Vocab(object):
     PAD, ROOT, UNK = 0, 1, 2
-    def __init__(self, word_counter, extword_list, tag_counter, rel_counter, relroot='root'):
+    def __init__(self, word_counter, extword_list, tag_counter, rel_counter, relroot='root', min_occur_count = 2):
         self._root = relroot
         self._id2word = ['<pad>', relroot.lower(), '<unk>']
         self._wordid2freq = [10000, 10000, 10000]
@@ -13,8 +13,9 @@ class Vocab(object):
         self._id2tag = ['<pad>', relroot]
         self._id2rel = ['<pad>', relroot]
         for word, count in word_counter.most_common():
-            self._id2word.append(word)
-            self._wordid2freq.append(count)
+            if count > min_occur_count:
+                self._id2word.append(word)
+                self._wordid2freq.append(count)
 
         for tag, count in tag_counter.most_common():
             self._id2tag.append(tag)
@@ -110,7 +111,7 @@ class Vocab(object):
     def rel_size(self):
         return len(self._id2rel)
 
-def creatVocab(corpusFile, extWord):
+def creatVocab(corpusFile, extWord, min_occur_count):
     word_counter = Counter()
     tag_counter = Counter()
     rel_counter = Counter()
@@ -130,7 +131,7 @@ def creatVocab(corpusFile, extWord):
                     print('root = ' + root + ', rel for root = ' + dep.rel)
 
 
-    return Vocab(word_counter, extWord, tag_counter, rel_counter, root)
+    return Vocab(word_counter, extWord, tag_counter, rel_counter, root, min_occur_count)
 
 
 if __name__ == '__main__':
@@ -146,5 +147,5 @@ if __name__ == '__main__':
 
     word, vec = load_all_pretrained_embeddings(args.emb)
 
-    vob = creatVocab(args.input, word)
+    vob = creatVocab(args.input, word, 2)
     vob.save(args.output)

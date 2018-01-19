@@ -123,7 +123,7 @@ def train(data, dev_data, test_data, graph, parser, vocab, config):
     global_step = 0
 
     def update_parameters():
-        trainer.learning_rate = config.learning_rate * config.decay ** (global_step / config.decay_steps)
+        trainer.learning_rate = config.learning_rate * config.decay ** int(global_step / config.decay_steps)
         trainer.update()
 
     best_UAS = 0.
@@ -216,7 +216,7 @@ if __name__ == '__main__':
     config = Configurable(args.config_file, extra_args)
 
     word, vec = load_all_pretrained_embeddings(config.pretrained_embeddings_file)
-    vocab = creatVocab(config.train_file, word)
+    vocab = creatVocab(config.train_file, word, config.min_occur_count)
 
     graph = ParserGraph(vocab, config, vec)
         
