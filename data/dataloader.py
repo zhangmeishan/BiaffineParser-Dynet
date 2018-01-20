@@ -8,25 +8,20 @@ def read_corpus(file_path, vocab=None):
             data.append(sentence)
     return data
 
-def sentences_numberize(sentences, vocab, isTrain=False):
+def sentences_numberize(sentences, vocab):
     for sentence in sentences:
-        yield sentence2id(sentence, vocab, isTrain)
+        yield sentence2id(sentence, vocab)
 
-def sentence2id(sentence, vocab, isTrain=False):
-    result = []
+def sentence2id(sentence, vocab):
+    words, extwords, tags, arcs, rels = [], [], [], [], []
     for dep in sentence:
-        wordid = vocab.word2id(dep.form)
-        #if wordid > vocab.ROOT and isTrain:
-        #    idfreq = vocab.wordid2freq(wordid)
-        #    border = idfreq / (0.25 + idfreq)
-        #    if np.random.uniform(0.0, 1.0, 1)[0] >= border: wordid = vocab.UNK
-        extwordid = vocab.extword2id(dep.form)
-        tagid = vocab.tag2id(dep.tag)
-        head = dep.head
-        relid = vocab.rel2id(dep.rel)
-        result.append([wordid, extwordid, tagid, head, relid])
+        words.append(vocab.word2id(dep.form))
+        extwords.append(vocab.extword2id(dep.form))
+        tags.append(vocab.tag2id(dep.tag))
+        arcs.append(dep.head)
+        rels.append(vocab.rel2id(dep.rel))
 
-    return result
+    return words, extwords, tags, arcs, rels
 
 
 def batch_slice(data, batch_size, sort=True):
@@ -56,42 +51,13 @@ def data_iter(data, batch_size, shuffle=True, sort=True):
         yield batch
 
 
-def batch_data_variable(batch, vocab, bTrain=False):
-    batch_size = len(batch)
-    lengths = [len(batch[i]) for i in range(batch_size)]
-    length = np.max(lengths)
-    words = np.zeros((length, batch_size), dtype=np.int32)
-    extwords = np.zeros((length, batch_size), dtype=np.int32)
-    tags = np.zeros((length, batch_size), dtype=np.int32)
-
-    heads = np.zeros((length, batch_size), dtype=np.int32)
-    rels = np.zeros((length, batch_size), dtype=np.int32)
-
-    b = 0
-    for sentence in sentences_numberize(batch, vocab, bTrain):
-        index = 0
-        for dep in sentence:
-            words[index, b] = dep[0]
-            extwords[index, b] = dep[1]
-            tags[index, b] = dep[2]
-            heads[index, b] = dep[3]
-            rels[index, b] = dep[4]
-            index += 1
-        b += 1
-
-    return words, extwords, tags, heads, rels, lengths
-
-def batch_variable_depTree(words, tags, heads, rels, lengths, vocab):
-    words = np.transpose(words)
-    tags = np.transpose(tags)
-    heads = np.transpose(heads)
-    rels = np.transpose(rels)
-    for word, tag, head, rel, length in zip(words, tags, heads, rels, lengths):
-        sentence = []
-        for idx in range(length):
-            sentence.append(Dependency(idx, vocab.id2word(word[idx]), vocab.id2tag(tag[idx]), \
-                            head[idx], vocab.id2rel(rel[idx])))
-        yield sentence
+def append2Tree(heads, rels, vocab, goldTree):
+    length = len(goldTree)
+    sentence = []
+    for idx in range(length):
+        sentence.append(Dependency(idx, goldTree[idx].form, goldTree[idx].tag, \
+                            heads[idx], vocab.id2rel(rels[idx])))
+    return sentence
 
 
 if __name__ == '__main__':

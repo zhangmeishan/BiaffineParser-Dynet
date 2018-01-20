@@ -17,14 +17,11 @@ def orthonormal_VanillaLSTMBuilder(lstm_layers, input_dims, lstm_hiddens, pc):
     return builder
 
 
-def biLSTM(builders, inputs, batch_size=None, dropout_x=0., dropout_h=0.):
+def biLSTM(builders, inputs, dropout_x=0., dropout_h=0.):
     for fb, bb in builders:
         f, b = fb.initial_state(), bb.initial_state()
         fb.set_dropouts(dropout_x, dropout_h)
         bb.set_dropouts(dropout_x, dropout_h)
-        if batch_size is not None:
-            fb.set_dropout_masks(batch_size)
-            bb.set_dropout_masks(batch_size)
         fs, bs = f.transduce(inputs), b.transduce(reversed(inputs))
         inputs = [dy.concatenate([f, b]) for f, b in zip(fs, reversed(bs))]
     return inputs
@@ -34,7 +31,7 @@ def leaky_relu(x):
     return dy.bmax(.1 * x, x)
 
 
-def bilinear(x, W, y, input_size, seq_len, batch_size, num_outputs=1, bias_x=False, bias_y=False):
+def bilinear(x, W, y, input_size, seq_len, num_outputs=1, bias_x=False, bias_y=False):
     # x,y: (input_size x seq_len) x batch_size
     if bias_x:
         x = dy.concatenate([x, dy.inputTensor(np.ones((1, seq_len), dtype=np.float32))])
@@ -45,10 +42,10 @@ def bilinear(x, W, y, input_size, seq_len, batch_size, num_outputs=1, bias_x=Fal
     # W: (num_outputs x ny) x nx
     lin = W * x
     if num_outputs > 1:
-        lin = dy.reshape(lin, (ny, num_outputs * seq_len), batch_size=batch_size)
+        lin = dy.reshape(lin, (ny, num_outputs * seq_len))
     blin = dy.transpose(y) * lin
     if num_outputs > 1:
-        blin = dy.reshape(blin, (seq_len, num_outputs, seq_len), batch_size=batch_size)
+        blin = dy.reshape(blin, (seq_len, num_outputs, seq_len))
     # seq_len_y x seq_len_x if output_size == 1
     # seq_len_y x num_outputs x seq_len_x else
     return blin

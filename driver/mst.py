@@ -91,14 +91,14 @@ class Tarjan:
     return self._SCCs
 
 
-def arc_argmax(parse_probs, length, tokens_to_keep, ensure_tree = True):
+def arc_argmax(parse_probs, length, ensure_tree = True):
     """
     adopted from Timothy Dozat https://github.com/tdozat/Parser/blob/master/lib/models/nn.py
     """
     if ensure_tree:
-        I = np.eye(len(tokens_to_keep))
+        I = np.eye(length)
         # block loops and pad heads
-        parse_probs = parse_probs * tokens_to_keep * (1-I)
+        parse_probs = parse_probs * (1-I)
         parse_preds = np.argmax(parse_probs, axis=1)
         tokens = np.arange(1, length)
         roots = np.where(parse_preds[tokens] == 0)[0]+1
@@ -163,7 +163,7 @@ def arc_argmax(parse_probs, length, tokens_to_keep, ensure_tree = True):
         return parse_preds
     else:
         # block and pad heads
-        parse_probs = parse_probs * tokens_to_keep
+        parse_probs = parse_probs
         parse_preds = np.argmax(parse_probs, axis=1)
         return parse_preds
 
