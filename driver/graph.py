@@ -62,14 +62,20 @@ class ParserGraph(object):
         word_embs = [dynamic_emb + static_emb for dynamic_emb, static_emb in zip(dynamic_embs, static_embs)]
         tag_embs = [dy.lookup(self.tag_embs, pos) for pos in tags]
 
-        emb_inputs = [dy.concatenate([word, pos]) for word, pos in zip(word_embs, tag_embs)]
-
         if isTrain:
-            word_mask = np.random.binomial(1, 1. - self.dropout_emb, \
-                                    self.config.word_dims + self.config.tag_dims).astype(np.float32)
-            word_mask = word_mask / (1. - self.dropout_emb)
-            word_mask = dy.inputTensor(word_mask)
-            emb_inputs = [dy.cmult(emb_input, word_mask) for emb_input in emb_inputs]
+            word_masks = np.random.binomial(1, 1. - self.dropout_emb, seq_len).astype(np.float32)
+            tag_masks = np.random.binomial(1, 1. - self.dropout_emb, seq_len).astype(np.float32)
+            scale = 3. / (2. * word_masks + tag_masks + 1e-12)
+            word_masks *= scale
+            tag_masks *= scale
+            word_embs = [dy.cmult(word_emb, dy.inputVector([word_mask])) \
+                         for word_emb, word_mask in zip(word_embs, word_masks)]
+            tag_embs = [dy.cmult(tag_emb, dy.inputVector([tag_mask])) \
+                         for tag_emb, tag_mask in zip(tag_embs, tag_masks)]
+
+
+        emb_inputs = [ dy.concatenate([word_emb, pos_emb]) \
+                      for word_emb, pos_emb in zip(word_embs, tag_embs)]
 
         # (2 * lstm_hiddens) * seq_len
         bilstm_out = dy.concatenate_cols(
@@ -132,7 +138,3 @@ class ParserGraph(object):
         rel_probs = dy.softmax(dy.transpose(flat_rel_logits))
 
         return arc_probs, rel_probs
-
-
-
-

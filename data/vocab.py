@@ -1,7 +1,6 @@
 from collections import Counter
 from data.dependency import *
 from data.pretrained_embedding import *
-#import torch.nn as nn
 
 class Vocab(object):
     PAD, ROOT, UNK = 0, 1, 2
@@ -30,8 +29,6 @@ class Vocab(object):
         self._extword2id = reverse(self._id2extword)
         self._tag2id = reverse(self._id2tag)
         self._rel2id = reverse(self._id2rel)
-
-
 
         print("Vocab info: #words %d,  #extwords %d, #tags %d #rels %d" % (self.vocab_size, self.extvocab_size, self.tag_size, self.rel_size))
 
