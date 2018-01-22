@@ -73,7 +73,7 @@ def readDepTree(file, vocab=None):
     min_count = 1
     if vocab is None: min_count = 0
     if vocab is None: sentence = []
-    else: sentence = [Dependency(0, vocab._root, vocab._root, 0, vocab._root)]
+    else: sentence = [Dependency(0, vocab._root_form, vocab._root, 0, vocab._root)]
     for line in file:
         tok = line.strip().split('\t')
         if not tok or line.strip() == '' or line.strip().startswith('#'):
@@ -81,13 +81,11 @@ def readDepTree(file, vocab=None):
                 if DepTree(sentence).isProj():
                     proj += 1
                 total += 1
-                #lastId = sentence[-1].id
-                #sentence.append(Dependency(lastId + 1, '<eos>', '<eos>', lastId, '<eos>'))
                 yield sentence
             if vocab is None:
                 sentence = []
             else:
-                sentence = [Dependency(0, vocab._root, vocab._root, 0, vocab._root)]
+                sentence = [Dependency(0, vocab._root_form, vocab._root, 0, vocab._root)]
         elif len(tok) == 10:
             if tok[6] == '_': tok[6] = '-1'
             try:
@@ -101,8 +99,6 @@ def readDepTree(file, vocab=None):
         if DepTree(sentence).isProj():
             proj += 1
         total += 1
-        #lastId = sentence[-1].id
-        #sentence.append(Dependency(lastId + 1, '<eos>', '<eos>', lastId, '<eos>'))
         yield sentence
 
     print("Total num: ", total)

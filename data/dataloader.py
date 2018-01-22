@@ -87,8 +87,8 @@ if __name__ == '__main__':
     file.close()
     print(count)
 
-    word, vec = load_all_pretrained_embeddings(args.emb)
-    vocab = creatVocab(args.input, word)
+    vocab = creatVocab(args.input)
+    vec = vocab.load_pretrained_embs(args.emb)
 
     data = read_corpus(args.input)
     file = open(args.output + '.id', 'w')

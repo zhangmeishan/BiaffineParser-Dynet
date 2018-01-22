@@ -1,16 +1,17 @@
 from collections import Counter
 from data.dependency import *
-from data.pretrained_embedding import *
+import numpy as np
 
 class Vocab(object):
-    PAD, ROOT, UNK = 0, 1, 2
-    def __init__(self, word_counter, extword_list, tag_counter, rel_counter, relroot='root', min_occur_count = 2):
+    ROOT, UNK = 0, 1
+    def __init__(self, word_counter, tag_counter, rel_counter, relroot='root', min_occur_count = 2):
         self._root = relroot
-        self._id2word = ['<pad>', relroot.lower(), '<unk>']
-        self._wordid2freq = [10000, 10000, 10000]
-        self._id2extword = ['<pad>']
-        self._id2tag = ['<pad>', relroot]
-        self._id2rel = ['<pad>', relroot]
+        self._root_form = '<' + relroot.lower() + '>'
+        self._id2word = [self._root_form, '<unk>']
+        self._wordid2freq = [10000, 10000]
+        self._id2extword = [self._root_form, '<unk>']
+        self._id2tag = [relroot]
+        self._id2rel = [relroot]
         for word, count in word_counter.most_common():
             if count > min_occur_count:
                 self._id2word.append(word)
@@ -22,15 +23,55 @@ class Vocab(object):
         for rel, count in rel_counter.most_common():
             if rel != relroot: self._id2rel.append(rel)
 
-        self._id2extword += extword_list
-
         reverse = lambda x: dict(zip(x, range(len(x))))
         self._word2id = reverse(self._id2word)
-        self._extword2id = reverse(self._id2extword)
-        self._tag2id = reverse(self._id2tag)
-        self._rel2id = reverse(self._id2rel)
+        if len(self._word2id) != len(self._id2word):
+            print("serious bug: words dumplicated, please check!")
 
-        print("Vocab info: #words %d,  #extwords %d, #tags %d #rels %d" % (self.vocab_size, self.extvocab_size, self.tag_size, self.rel_size))
+        self._tag2id = reverse(self._id2tag)
+        if len(self._tag2id) != len(self._id2tag):
+            print("serious bug: POS tags dumplicated, please check!")
+
+        self._rel2id = reverse(self._id2rel)
+        if len(self._rel2id) != len(self._id2rel):
+            print("serious bug: relation labels dumplicated, please check!")
+
+        print("Vocab info: #words %d, #tags %d #rels %d" % (self.vocab_size, self.tag_size, self.rel_size))
+
+    def load_pretrained_embs(self, embfile):
+        embedding_dim = -1
+        word_count = 0
+        with open(embfile, encoding='utf-8') as f:
+            for line in f.readlines():
+                if word_count < 1:
+                    values = line.split()
+                    embedding_dim = len(values) - 1
+                word_count += 1
+        print('Total words: ' + str(word_count) + '\n')
+        print('The dim of pretrained embeddings: ' + str(embedding_dim) + '\n')
+
+        embeddings = np.zeros((word_count + 2, embedding_dim))
+        index = 2
+        with open(embfile, encoding='utf-8') as f:
+            for line in f.readlines():
+                values = line.split()
+                self._id2extword.append(values[0])
+                vector = np.array(values[1:], dtype='float64')
+                embeddings[self.UNK] += vector
+                embeddings[index] = vector
+                index += 1
+
+        embeddings[self.UNK] = embeddings[self.UNK] / word_count
+        embeddings = embeddings / np.std(embeddings)
+
+        reverse = lambda x: dict(zip(x, range(len(x))))
+        self._extword2id = reverse(self._id2extword)
+
+        if len(self._extword2id) != len(self._id2extword):
+            print("serious bug: extern words dumplicated, please check!")
+
+        return embeddings
+
 
     def word2id(self, xs):
         if isinstance(xs, list):
@@ -108,12 +149,11 @@ class Vocab(object):
     def rel_size(self):
         return len(self._id2rel)
 
-def creatVocab(corpusFile, extWord, min_occur_count):
+def creatVocab(corpusFile, min_occur_count):
     word_counter = Counter()
     tag_counter = Counter()
     rel_counter = Counter()
     root = ''
-
     with open(corpusFile, 'r') as infile:
         for sentence in readDepTree(infile):
             for dep in sentence:
@@ -127,8 +167,7 @@ def creatVocab(corpusFile, extWord, min_occur_count):
                 elif root != dep.rel:
                     print('root = ' + root + ', rel for root = ' + dep.rel)
 
-
-    return Vocab(word_counter, extWord, tag_counter, rel_counter, root, min_occur_count)
+    return Vocab(word_counter, tag_counter, rel_counter, root, min_occur_count)
 
 
 if __name__ == '__main__':
@@ -142,7 +181,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    word, vec = load_all_pretrained_embeddings(args.emb)
-
-    vob = creatVocab(args.input, word, 2)
-    vob.save(args.output)
+    vocab = creatVocab(args.input, 2)
+    vocab.load_pretrained_embs(args.emb)
+    vocab.save(args.output)
