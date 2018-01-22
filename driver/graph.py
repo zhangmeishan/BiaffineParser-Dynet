@@ -52,7 +52,13 @@ class ParserGraph(object):
     @property
     def parameter_collection(self):
         return self._pc
+        
+    def save(self, save_path):
+        self._pc.save(save_path)
 
+    def load(self, load_path):
+        self._pc.populate(load_path)
+        
     def forward(self, words, extwords, tags, isTrain):
         # inputs, targets: seq_le
         seq_len = len(words)
