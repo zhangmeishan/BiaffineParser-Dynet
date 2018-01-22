@@ -8,6 +8,7 @@ import numpy as np
 import dynet as dy
 import pickle
 
+
 def train(data, dev_data, test_data, graph, vocab, config):
     pc = graph.parameter_collection
     trainer = dy.AdamTrainer(pc, config.learning_rate, config.beta_1, config.beta_2, config.epsilon)
@@ -59,8 +60,8 @@ def train(data, dev_data, test_data, graph, vocab, config):
                 if dev_uas > best_UAS:
                     print("Exceed best uas: history = %.2f, current = %.2f" %(best_UAS, dev_uas))
                     best_UAS = dev_uas
-                    #if iter > config.save_after: 
-                    graph.save(config.save_model_path)
+                    if config.save_after > 0 and iter > config.save_after:
+                        graph.save(config.save_model_path)
 
         dev_uas, dev_las = evaluate(dev_data, graph, vocab, config.dev_file + '.' + str(iter) + '-' + str(batch_iter))
         print("Dev: uas = %.2f, las = %.2f" % (dev_uas, dev_las))
@@ -69,7 +70,8 @@ def train(data, dev_data, test_data, graph, vocab, config):
         if dev_uas > best_UAS:
             print("Exceed best uas: history = %.2f, current = %.2f" % (best_UAS, dev_uas))
             best_UAS = dev_uas
-            graph.save(config.save_model_path)
+            if config.save_after > 0 and iter > config.save_after:
+                graph.save(config.save_model_path)
         print('iter: ', iter, ' train: ', time.time() - start_time)
 
 

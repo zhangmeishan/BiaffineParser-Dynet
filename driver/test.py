@@ -59,16 +59,12 @@ if __name__ == '__main__':
 
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--config_file', default='examples/default.cfg')
-    argparser.add_argument('--graph', default='BaseParser')
-    argparser.add_argument('--thread', default=4, type=int, help='thread num')
-    argparser.add_argument('--use-cuda', action='store_true', default=True)
 
     args, extra_args = argparser.parse_known_args()
     config = Configurable(args.config_file, extra_args)
 
-    word, vec = load_all_pretrained_embeddings(config.pretrained_embeddings_file)
     vocab = pickle.load(open(config.load_vocab_path, 'rb'))
-
+    vec = vocab.create_pretrained_embs(config.pretrained_embeddings_file)
     graph = ParserGraph(vocab, config, vec)
     graph.load(config.load_model_path)
 

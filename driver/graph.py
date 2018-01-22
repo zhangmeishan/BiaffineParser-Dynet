@@ -4,6 +4,7 @@ import dynet as dy
 from driver.mst import *
 
 
+
 def dynet_flatten_numpy(ndarray):
     return np.reshape(ndarray, (-1,), 'F')
 

@@ -172,7 +172,7 @@ def rel_argmax(rel_probs, length, ROOT, ensure_tree = True):
     adopted from Timothy Dozat https://github.com/tdozat/Parser/blob/master/lib/models/nn.py
     """
     if ensure_tree:
-        rel_probs[:,0] = 0
+        rel_probs[0] = 0
         root = ROOT
         tokens = np.arange(1, length)
         rel_preds = np.argmax(rel_probs, axis=1)
@@ -189,6 +189,6 @@ def rel_argmax(rel_probs, length, ROOT, ensure_tree = True):
             rel_preds[new_root] = root
         return rel_preds
     else:
-        rel_probs[:,0] = 0
+        rel_probs[0] = 0
         rel_preds = np.argmax(rel_probs, axis=1)
         return rel_preds
