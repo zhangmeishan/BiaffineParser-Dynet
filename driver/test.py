@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
     test_data = read_corpus(config.test_file, vocab)
 
-    test_uas, test_las = evaluate(test_data, graph, vocab, config.test_file)
+    test_uas, test_las = evaluate(test_data, graph, vocab, config.test_file + '.out')
     print("Test: uas = %.2f, las = %.2f" % (test_uas, test_las))
 
 
