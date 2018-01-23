@@ -51,7 +51,7 @@ def evaluate(data, graph, vocab, outputFile):
     end = time.time()
     print('sentence num:' + str(len(data)) + ', parse time: ', end - start)
 
-    return uas, las
+    return arc_correct_test, rel_correct_test, arc_total_test, uas, las
 
 
 if __name__ == '__main__':
@@ -70,7 +70,9 @@ if __name__ == '__main__':
 
     test_data = read_corpus(config.test_file, vocab)
 
-    test_uas, test_las = evaluate(test_data, graph, vocab, config.test_file + '.out')
-    print("Test: uas = %.2f, las = %.2f" % (test_uas, test_las))
+    arc_correct, rel_correct, arc_total, test_uas, test_las = \
+        evaluate(test_data, graph, vocab, config.test_file + '.out')
+    print("Test: uas = %d/%d = %.2f, las = %d/%d =%.2f" % \
+          (arc_correct, arc_total, test_uas, rel_correct, arc_total, test_las))
 
 

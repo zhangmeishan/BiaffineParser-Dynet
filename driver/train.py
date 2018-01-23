@@ -51,22 +51,28 @@ def train(data, dev_data, test_data, graph, vocab, config):
             
 
             if batch_iter % config.validate_every == 0:
-                dev_uas, dev_las = evaluate(dev_data, graph, vocab, \
-                                config.dev_file + '.' + str(iter) + '-' + str(batch_iter))
-                print("Dev: uas = %.2f, las = %.2f" % (dev_uas, dev_las))
-                test_uas, test_las = evaluate(test_data, graph, vocab, \
+                arc_correct, rel_correct, arc_total, dev_uas, dev_las = evaluate(dev_data, \
+                    graph, vocab, config.dev_file + '.' + str(iter) + '-' + str(batch_iter))
+                print("Dev: uas = %d/%d = %.2f, las = %d/%d =%.2f" % \
+                      (arc_correct, arc_total, dev_uas, rel_correct, arc_total, dev_las))
+                arc_correct, rel_correct, arc_total, test_uas, test_las = evaluate(test_data, graph, vocab, \
                                 config.test_file + '.' + str(iter) + '-' + str(batch_iter))
-                print("Test: uas = %.2f, las = %.2f" % (test_uas, test_las))
+                print("Test: uas = %d/%d = %.2f, las = %d/%d =%.2f" % \
+                      (arc_correct, arc_total, test_uas, rel_correct, arc_total, test_las))
                 if dev_uas > best_UAS:
                     print("Exceed best uas: history = %.2f, current = %.2f" %(best_UAS, dev_uas))
                     best_UAS = dev_uas
                     if config.save_after > 0 and iter > config.save_after:
                         graph.save(config.save_model_path)
 
-        dev_uas, dev_las = evaluate(dev_data, graph, vocab, config.dev_file + '.' + str(iter) + '-' + str(batch_iter))
-        print("Dev: uas = %.2f, las = %.2f" % (dev_uas, dev_las))
-        test_uas, test_las = evaluate(test_data, graph, vocab, config.test_file + '.' + str(iter) + '-' + str(batch_iter))
-        print("Test: uas = %.2f, las = %.2f" % (test_uas, test_las))
+        arc_correct, rel_correct, arc_total, dev_uas, dev_las = evaluate(dev_data, graph,\
+                        vocab, config.dev_file + '.' + str(iter) + '-' + str(batch_iter))
+        print("Dev: uas = %d/%d = %.2f, las = %d/%d =%.2f" % \
+              (arc_correct, arc_total, dev_uas, rel_correct, arc_total, dev_las))
+        arc_correct, rel_correct, arc_total, test_uas, test_las = evaluate(test_data, graph, \
+                        vocab, config.test_file + '.' + str(iter) + '-' + str(batch_iter))
+        print("Test: uas = %d/%d = %.2f, las = %d/%d =%.2f" % \
+              (arc_correct, arc_total, test_uas, rel_correct, arc_total, test_las))
         if dev_uas > best_UAS:
             print("Exceed best uas: history = %.2f, current = %.2f" % (best_UAS, dev_uas))
             best_UAS = dev_uas
@@ -117,7 +123,7 @@ def evaluate(data, graph, vocab, outputFile):
     end = time.time()
     print('sentence num:' + str(len(data)) + ', parse time: ', end - start)
 
-    return uas, las
+    return arc_correct_test, rel_correct_test, arc_total_test, uas, las
 
 
 if __name__ == '__main__':
